@@ -21,7 +21,7 @@ Agent.prototype.GetStateMachine = function() {
 
 Agent.prototype.completed = function() {
 	//dispatchEvent :: ACTION_COMPLETED
-	alert('ACTION_COMPLETED');
+	
 }
 
 Agent.prototype.clearStates = function() {

@@ -1,7 +1,7 @@
 Unit.prototype = new Agent();
 Unit.prototype.constructor = Unit;
 
-function Unit(col,row,type, teamID) {
+function Unit(col,row,type, teamID,id) {
 	this.initialize();
 
 	this.col = col;
@@ -10,7 +10,11 @@ function Unit(col,row,type, teamID) {
 	this.speed = 5; 
 	this.movement = 0;
 	this.selected = false;
-	this.src = "./Unit.png";
+	this.idx = id;
+
+	if(teamID === 0) this.src = "./images/Unit.png";
+	else if(teamID === 1) this.src = './images/Enemy.png';
+	
 	this.teamID = teamID;
 
 	this.range = 1;
@@ -22,8 +26,9 @@ function Unit(col,row,type, teamID) {
 
 Unit.prototype.enemyIsInRange = function(enemy) {
 	var distance = parseInt(Math.sqrt( Math.pow(enemy.col - this.col,2) + Math.pow(enemy.row - this.row,2)));
+	//console.log(distance);
 
-	//if(distance <= this.range) return true;
+	if(distance <= 1.5 * this.range) return true;
 
 	return false;
 }

@@ -29,9 +29,9 @@ StateMachine.prototype.ChangeState = function(state) {
 }
 
 StateMachine.prototype.GoToPrevState = function() {
-	this.ChangeState(prevState);
+	this.ChangeState(this.prevState);
 }
 
 StateMachine.prototype.GoToNextState = function() {
-	this.ChangeState(nextState);
+	this.ChangeState(this.nextState);
 }

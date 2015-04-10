@@ -8,8 +8,11 @@ function Grid(height,width) { //number of rows x number of cols
 }
 
 Grid.prototype.addUnit = function(unit) {
-	var element = document.getElementById(this.generateID(unit.col,unit.row));
-	element.innerHTML = "<img src='"+ unit.src +"'></img>";
+	var element = document.getElementById(this.generateID(unit.col,unit.row));//td?->onComplete!
+	var innerText = "<img id='player_unit_id_"+unit.teamID+"_"+unit.idx+"' style='position: relative' src='"+ unit.src +"'></img>";
+	element.innerHTML = innerText;
+
+	//$('#player_unit_id').ani
 	this.getTile(unit.col,unit.row).addUnit(unit);
 }
 

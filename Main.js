@@ -19,6 +19,7 @@ var Main = (function() {
 
 function Game() {
     var GRID_HEIGHT = 10;
+    this.LAST_ENEMY_IDX = 0;
 	this.grid = new Grid(GRID_HEIGHT,15);
     this.playerUnitSelector = new UnitSelector(GRID_HEIGHT,0);
     this.enemyUnitSelector = new UnitSelector(GRID_HEIGHT,1);
@@ -49,18 +50,31 @@ function Game() {
 }
 
 Game.prototype.onPlayerGroupClick = function(e) {
+   // alert(e.target.id);
     var idToArray = (e.target.id).split("_");
-    var unitIDX = idToArray[idToArray.length-1];
-    Main.getInstance().initUnit(unitIDX);
+
+    if(idToArray[1] === 'img') {
+        var unitIDX = idToArray[idToArray.length-1];
+        Main.getInstance().initUnit(unitIDX);
+    }
+    
 }
 
+//START POINT!!!
 Game.prototype.initUnit = function(idx) {
+    $('#intro_container').css({display: 'none'});
+
     this.playerUnitSelector.removeUnit(idx);
     this.enemyUnitSelector.removeUnits();
     this.addUnits();
     this.updateMovementLabel(this.unit.movement, this.unit.speed);
     this.updateHP();
     this.init();
+
+    var nextTurnBtn = document.getElementById('nextTurnBtn');
+    nextTurnBtn.style.display = 'inline';
+
+    this.updateEnemy(this.LAST_ENEMY_IDX);
 }
 
 
@@ -69,14 +83,14 @@ Game.prototype.onStartBtn = function() {
 	this.gridElement.innerHTML = this.grid.getInnerHtml();
     this.enemyGroup.innerHTML = this.enemyUnitSelector.build();
 
-	var nextTurnBtn = document.getElementById('nextTurnBtn');
-	nextTurnBtn.style.display = 'inline';
+	//var nextTurnBtn = document.getElementById('nextTurnBtn');
+	//nextTurnBtn.style.display = 'inline';
 	this.clickedUnit = null;
 
 	var startBtn = document.getElementById('startBtn');
 	startBtn.style.display = 'none';
 
-    this.unit = new Unit(0,0,0,0);
+    this.unit = new Unit(0,0,0,0,0);
     this.unit.init();
 
     this.enemies = [this.newEnemy(14,0),this.newEnemy(14,1),this.newEnemy(14,2),this.newEnemy(14,3),this.newEnemy(14,4),
@@ -87,6 +101,16 @@ Game.prototype.onStartBtn = function() {
 
     this.enemyUnitSelector.units = this.enemies;
     this.enemyUnitSelector.showUnitsOnGrid();
+
+    var position = $('#grid').position(); //.top / .left
+    var gridW = $('#grid').width();
+    var gridH = $('#grid').height();
+
+    var $img = $('<div />')
+    .css({'font-weight': 'bold', color: 'white', width: gridW, height: gridH, top: position.top+5, left: position.left+5, position: 'absolute', background: 'blue'})
+    .html('<strong> <--- </strong> Click on your unit to start!')
+    .attr({id: "intro_container"});
+    $('body').append($img);
 }
 
 Game.prototype.updateHP = function() {
@@ -95,10 +119,9 @@ Game.prototype.updateHP = function() {
 }
 
 Game.prototype.newEnemy = function(x,y) {
-	var enemy = new Unit(x,y,0,1);
+	var enemy = new Unit(x,y,0,1,y);
 	enemy.init();
-	enemy.src = './Enemy.png';
-
+    
 	return enemy;
 }
 
@@ -108,7 +131,6 @@ Game.prototype.init = function() {
 	for(i; i < this.enemies.length; i++) {
 		enemy = this.enemies[i];
 		enemy.GetStateMachine().ChangeState(new Scout(enemy));
-   		enemy.Update();
 	}
 }
 
@@ -147,27 +169,19 @@ Game.prototype.onTileClick = function(clickedTile) {
             if(this.clickedOnPath(cords)) {//move to clicked position...
                // alert('clicked on path!');
                var idx = this.clickedTileHasNoUnit(cords);
-               if(idx != -1) {
-               		
-               		if(this.grid.removeUnit(this.enemies[idx])) {
-               			this.enemies[idx].destruct();
-               			this.enemies[idx] = null;
-               			alert('Enemy ' + (idx+1) + ' killed!');
-               		}
-               		
-               }
-                this.pathfinder.reset();
-                this.grid.removeUnit(this.unit);
-                var totalCost = this.pathfinder.calculateTotalMovementCost(new Point(this.unit.col,this.unit.row), cords, this.path);
-                this.unit.movement -= totalCost;
-                this.updateMovementLabel(this.unit.movement, this.unit.speed);
-                this.unit.updateLocation(cords);
-                this.addUnits();
-                this.pathfinder.setStartPoint(this.unit.col,this.unit.row);
-                this.updateGridElement();
-                this.addUnits();
 
+               var oldPosition = $('#player_unit_id_0_0').position();
+               var newPosition = $('#'+this.grid.generateID(cords.x,cords.y)).position();
 
+               var dy = newPosition.top - oldPosition.top + 5;
+               var dx = newPosition.left - oldPosition.left + 4;
+
+               $('#player_unit_id_0_0').animate( {
+                    top: '+='+dy,
+                    left: '+='+dx
+               }, 500, function() {
+                    Main.getInstance().onAnimationCompleted(idx,cords);
+               });
 
             } else /*if(this.clickedTileHasNoUnit(cords))*/ {//find path to target
                 this.pathfinder.reset();
@@ -184,31 +198,90 @@ Game.prototype.onTileClick = function(clickedTile) {
     }
 }
 
+Game.prototype.onAnimationCompleted = function(idx,cords) {
+    if(idx != -1) {
+                    
+        if(this.grid.removeUnit(this.enemies[idx])) {
+            this.enemies[idx].destruct();
+            this.enemies[idx] = null;
+           // alert('Enemy ' + (idx+1) + ' killed!');
+        }
+        
+     }
+
+    this.pathfinder.reset();
+    this.grid.removeUnit(this.unit);
+    var totalCost = this.pathfinder.calculateTotalMovementCost(new Point(this.unit.col,this.unit.row), cords, this.path);
+    this.unit.movement -= totalCost;
+    this.updateMovementLabel(this.unit.movement, this.unit.speed);
+    this.unit.updateLocation(cords);
+    this.addUnits();
+    this.pathfinder.setStartPoint(this.unit.col,this.unit.row);
+    this.updateGridElement();
+    this.addUnits();
+}
+
 Game.prototype.moveToPosition = function(unit, finalCords, path) {
 	this.pathfinder.reset();
 
-	if(this.unit != null && this.unit.col == finalCords.x && this.unit.row == finalCords.y) {
-		this.unit.currentHP -= 1;
-		this.updateHP();
-		if(this.unit.currentHP <= 0) {
-			this.grid.removeUnit(this.unit);
-			this.unit.destruct();
-			this.unit = null;
-		}
-	}
+    var id = '#player_unit_id_' + unit.teamID + "_" + unit.idx;
+    var $unit = $(id);
 
-	this.grid.removeUnit(unit);
-	//console.log(finalCords.x, finalCords.y);
-	var totalCost = this.pathfinder.calculateTotalMovementCost(new Point(unit.col,unit.row), finalCords, path);
-	unit.movement -= totalCost;
-	unit.updateLocation(finalCords);
-	this.addUnits();
-	this.updateGridElement();
+    var oldPos = $unit.position();
+    var newPos = $('#'+this.grid.generateID(finalCords.x, finalCords.y)).position();
+
+    var dx = newPos.left - oldPos.left;
+    var dy = newPos.top - oldPos.top;
+
+    $unit.animate( {
+        top: '+='+dy,
+        left: '+='+dx
+    }, 500, function() {
+        Main.getInstance().onEnemyAnimationCompleted(unit, finalCords, path);
+    });
+}
+
+Game.prototype.moveToNextCord = function(unit,nextCord) {
+    var id = '#player_unit_id_' + unit.teamID + "_" + unit.idx;
+    var $unit = $(id);
+    var oldPos = $unit.position();
+    var newPos = $('#'+this.grid.generateID(nextCord.x, nextCord.y)).position();
+    var dx = newPos.left - oldPos.left;
+    var dy = newPos.top - oldPos.top;
+
+    $unit.animate( {
+        top: '+='+dy,
+        left: '+='+dx
+    }, 100, function() {
+       //move completed
+    });
+}
+
+Game.prototype.onEnemyAnimationCompleted = function(unit, finalCords, path) {
+    if(this.unit != null && this.unit.col == finalCords.x && this.unit.row == finalCords.y) {
+        this.unit.currentHP -= 1;
+        this.updateHP();
+        if(this.unit.currentHP <= 0) {
+            this.grid.removeUnit(this.unit);
+            this.unit.destruct();
+            this.unit = null;
+        }
+    }
+
+    this.grid.removeUnit(unit);
+    //console.log(finalCords.x, finalCords.y);
+    var totalCost = this.pathfinder.calculateTotalMovementCost(new Point(unit.col,unit.row), finalCords, path);
+    unit.movement -= totalCost;
+    unit.updateLocation(finalCords);
+    this.addUnits();
+    this.updateGridElement();
     this.addUnits();
 
     if(this.unit == null) {
-    	alert("Killed by enemy! Game Over! You lost!!!");
+        //alert("Killed by enemy! Game Over! You lost!!!");
     }
+
+    this.onActionCompleted();
 }
 
 Game.prototype.updateMovementLabel = function(movementLeft, speed) {
@@ -319,14 +392,34 @@ Game.prototype.onNextTurnBtn = function() {
 	    this.updateMovementLabel(this.unit.movement, this.unit.speed);
 	}
 
-	var i;
+	/*var i;
 	for(i = 0; i < this.enemies.length; i++) {
 		if(this.enemies[i] != null) {
 	    	this.enemies[i].init(); //reset
 			this.enemies[i].Update(); //action
 		}
-	}
+	}*/
+
+    this.LAST_ENEMY_IDX = 0;
+    this.updateEnemy(0);
     
+}
+
+Game.prototype.updateEnemy = function(idx) {
+    //alert('update...');
+    if(this.enemies[idx] != null) {
+        this.enemies[idx].init();
+        this.enemies[idx].Update();
+    } else {
+        if(this.LAST_ENEMY_IDX+1 < this.enemies.length) {
+            this.onActionCompleted();
+        }
+    }
+}
+
+Game.prototype.onActionCompleted = function() {
+    this.LAST_ENEMY_IDX++;
+    this.updateEnemy(this.LAST_ENEMY_IDX);
 }
 
 Game.prototype.getEnemies = function(teamID) {
